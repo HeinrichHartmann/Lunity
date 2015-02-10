@@ -11,6 +11,9 @@ module( 'lunity' )
 
 VERSION = "0.10.1"
 
+local _write = io.write
+local _print = function(s) _write(tostring(s) .. "\n") end
+
 local lunity = _M
 setmetatable( lunity, {
 	__index = _G,
@@ -29,9 +32,13 @@ setmetatable( lunity, {
 	end
 } )
 
+function setWriter(writer)
+  _write = writer
+end
+
 function __assertionSucceeded()
 	lunity.__assertsPassed = lunity.__assertsPassed + 1
-	io.write('.')
+	_write('.')
 	return true
 end
 
@@ -304,6 +311,7 @@ function is_userdata( value ) return type(value)=='userdata' end
 
 function __runAllTests( testSuite, options )
 	if not options then options = {} end
+    if not testSuite._NAME then testSuite._NAME = "" end
 	lunity.__assertsPassed = 0
 
 	local useHTML, useANSI
@@ -324,13 +332,13 @@ function __runAllTests( testSuite, options )
 	end
 	
 	if useHTML then
-		print( "<h2 style='background:#000; color:#fff; margin:1em 0 0 0; padding:0.1em 0.4em; font-size:120%'>"..testSuite._NAME.."</h2><pre style='margin:0; padding:0.2em 1em; background:#ffe; border:1px solid #eed; overflow:auto'>" )
+		_print( "<h2 style='background:#000; color:#fff; margin:1em 0 0 0; padding:0.1em 0.4em; font-size:120%'>"..testSuite._NAME.."</h2><pre style='margin:0; padding:0.2em 1em; background:#ffe; border:1px solid #eed; overflow:auto'>" )
 	else
-		print( string.rep('=',78) )
-		print( testSuite._NAME )
-		print( string.rep('=',78) )
+		_print( string.rep('=',78) )
+		_print( "Test Suite: "..testSuite._NAME )
+		_print( string.rep('=',78) )
 	end
-	io.stdout:flush()
+	-- io.stdout:flush()
 
 	local theTestNames = {}
 	for testName,test in pairs(testSuite) do
@@ -341,53 +349,56 @@ function __runAllTests( testSuite, options )
 	table.sort(theTestNames)
 
 	local theSuccessCount = 0
+    local theFailCount = 0
 	for _,testName in ipairs(theTestNames) do
 		local testScratchpad = {}
-		io.write( testName..": " )
+		_write( testName..": " )
 		if testSuite.setup then testSuite.setup(testScratchpad) end
 		local successFlag, errorMessage = pcall( testSuite[testName], testScratchpad )
 		if successFlag then
-			print( "pass" )
+			_print( "pass" )
 			theSuccessCount = theSuccessCount + 1
 		else
-			if useANSI then
-				print( "\27[31m\27[1mFAIL!\27[0m" )
-				print( "\27[31m"..errorMessage.."\27[0m" )
-			elseif useHTML then
-				print("<b style='color:red'>FAIL!</b>")
-				print( "<span style='color:red'>"..errorMessage.."</span>" )
-			else
-				print("FAIL!")
-				print( errorMessage )
-			end
+          theFailCount = theFailCount + 1
+          if useANSI then
+            _print( "\27[31m\27[1mFAIL!\27[0m" )
+            _print( "\27[31m"..errorMessage.."\27[0m" )
+          elseif useHTML then
+            _print("<b style='color:red'>FAIL!</b>")
+            _print( "<span style='color:red'>"..errorMessage.."</span>" )
+          else
+            _print("FAIL!")
+            _print( errorMessage )
+          end
 		end
-		io.stdout:flush()
+		-- io.stdout:flush()
 		if testSuite.teardown then testSuite.teardown( testScratchpad ) end
 	end
 	if useHTML then
-		print( "</pre>" )
+		_print( "</pre>" )
 	else
-		print( string.rep( '-', 78 ) )
+		_print( string.rep( '-', 78 ) )
 	end
 
-	print( string.format( "%d/%d tests passed (%0.1f%%)",
-		theSuccessCount,
-		#theTestNames,
-		100 * theSuccessCount / #theTestNames
-	) )
-
+	_print(string.format( "%d/%d tests passed (%0.1f%%)",
+                          theSuccessCount,
+                          #theTestNames,
+                          100 * theSuccessCount / #theTestNames
+                        ))
+    
 	if useHTML then
-		print( "<br>" )
+		_print( "<br>" )
 	end
 
-	print( string.format( "%d total successful assertion%s",
+	_print( string.format( "%d total successful assertion%s",
 		lunity.__assertsPassed,
 		lunity.__assertsPassed == 1 and "" or "s"
 	) )
 
 	if not useHTML then
-		print( "" )
+		_print( "" )
 	end
-	io.stdout:flush()
+	-- io.stdout:flush()
 
+    return (theFailCount == 0) -- True iff all tests passed
 end
