@@ -61,6 +61,24 @@ function assertEqual( actual, expected, msg )
 	return __assertionSucceeded()
 end
 
+function assertAlmostEqual( actual, expected, precision )
+  -- checks if numbers are equal up to N significant digits
+  if precision == nil then precision = 3 end
+  eps = 10^(-precision)
+
+  if actual == 0 then
+    -- In case a=0, check the absultute difference to b
+    assertTrue(math.abs(expected) < eps,
+               "Expected value bigger than "..tostring(eps)
+    )
+  else
+    assertTrue(math.abs(1 - expected/actual) < eps,
+               string.format("Too large difference between %f and %f in precision %d", actual, expected, precision)
+    )
+  end
+end
+
+
 function assertTableEquals( actual, expected, msg, keyPath )
 	-- Easy out
 	if actual == expected then
